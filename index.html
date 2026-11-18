@@ -1,0 +1,283 @@
+<!doctype html>
+<html lang="ja" data-theme="light">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<title>テントウムシの草むらサバイバル</title>
+<meta name="description" content="カメラの前で体を左右に動かして、テントウムシになって、クモの巣・カエル・カマキリをよけ続けるブラウザゲームです。" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@700;900&family=Outfit:wght@500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css?v=20261013-result-timer-lines">
+</head>
+<body>
+
+<!-- 草むら・障害物・キャラクターはすべてこのキャンバスに描いている(game.js) -->
+<canvas id="game-canvas"></canvas>
+
+<!-- ふわふわ舞う花粉の演出 -->
+<div class="bubbles" aria-hidden="true">
+  <span></span><span></span><span></span><span></span><span></span><span></span>
+  <span></span><span></span><span></span><span></span><span></span><span></span>
+</div>
+
+<div class="vignette" aria-hidden="true"></div>
+
+
+<!-- ============================================================
+     プレイ中の表示(スコアなど)
+     ============================================================ -->
+<div class="hud" id="hud" hidden>
+  <div class="hud-group">
+    <div class="hud-item hud-score">
+      <span class="hud-label">SCORE</span>
+      <span class="hud-value"><span id="hud-score">0</span></span>
+    </div>
+    <div class="hud-item hud-combo" id="hud-combo-item" hidden>
+      <span class="hud-label">COMBO</span>
+      <span class="hud-value"><span id="hud-combo">0</span><span class="hud-unit">×<span id="hud-mult">1.0</span></span></span>
+    </div>
+  </div>
+  <div class="hud-item hud-time">
+    <span class="hud-label">TIME</span>
+    <span class="hud-value"><span id="hud-time">60</span><span class="hud-unit">s</span></span>
+  </div>
+  <div class="hud-group">
+    <div class="hud-item">
+      <span class="hud-label">よけた数</span>
+      <span class="hud-value"><span id="hud-dodged">0</span></span>
+    </div>
+    <div class="hud-item">
+      <span class="hud-label">ライフ</span>
+      <!-- 印の数は難易度によって変わるので main.js が作ります -->
+      <span class="hud-pips" id="hud-lives"></span>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     画面左：スコアランキング(タイトル画面だけ) とカメラ映像の小窓
+     ============================================================ -->
+<div class="left-stack">
+<aside class="title-ranking" aria-label="スコアランキング">
+  <h2 class="title-ranking-head">スコアランキング</h2>
+  <!-- 今の難易度の上位5件。main.js の refreshTitleBest が書き込む -->
+  <ol class="title-ranking-list" id="title-ranking-list"></ol>
+</aside>
+<aside class="camera-dock">
+  <div class="dock-label">POSE TRACKING</div>
+  <div class="video-wrap">
+    <video id="input-video" playsinline muted></video>
+    <canvas id="overlay-canvas"></canvas>
+    <div class="track-badge" id="track-badge" data-state="off">未検出</div>
+  </div>
+  <p id="status" class="status">カメラを準備しています…</p>
+</aside>
+</div>
+
+<!-- ============================================================
+     操作ボタン(画面上部)
+     ============================================================ -->
+<nav class="controls" id="controls" aria-label="ゲーム操作">
+  <button id="btn-start" class="btn btn-primary btn-sm">▶ スタート</button>
+  <button id="btn-stop" class="btn btn-sm" disabled>■ ストップ</button>
+  <button id="btn-recalib" class="btn btn-sm" disabled><span class="lbl-long">基準を</span>合わせ直す</button>
+</nav>
+
+<!-- ============================================================
+     設定(普段は畳んでおく)
+     ============================================================ -->
+<details class="settings-dock">
+  <summary>設定</summary>
+  <div class="settings">
+    <!-- 一覧は main.js の refreshCameraList が作る（カメラを許可したあとで名前が出る） -->
+    <label>
+      <span>使うカメラ</span>
+      <select id="set-camera">
+        <option value="">自動（いつものカメラ）</option>
+      </select>
+    </label>
+    <label class="check">
+      <input type="checkbox" id="set-show-start-button">
+      <span>ゲーム開始ボタンを表示（展示時はオフ）</span>
+    </label>
+    <label>
+      <span>画面の明るさ</span>
+      <select id="set-theme">
+        <option value="dark">暗い</option>
+        <option value="light" selected>明るい</option>
+      </select>
+    </label>
+    <label>
+      <span>感度(小さく動かすだけで大きく動く)</span>
+      <input type="range" id="set-sensitivity" min="0.6" max="3.0" step="0.1" value="1.5">
+      <output id="set-sensitivity-value">1.5</output>
+    </label>
+    <label>
+      <span>滑らかさ(大きいほどキビキビ動く)</span>
+      <input type="range" id="set-smoothing" min="2" max="14" step="0.5" value="14">
+      <output id="set-smoothing-value">14.0</output>
+    </label>
+    <label class="check">
+      <input type="checkbox" id="set-mirror" checked>
+      <span>左右反転(動きが逆に感じる場合はチェックを外す)</span>
+    </label>
+    <!-- 難易度は画面には出さない裏設定。タイトル画面で 1・2・3 キーでも切り替えられる -->
+    <label>
+      <span>難易度(タイトル画面で 1・2・3 キーでも変更可)</span>
+      <select id="set-difficulty">
+        <option value="easy">やさしい(ライフ5 / ゆっくり)</option>
+        <option value="normal">ふつう(ライフ3 / 標準)</option>
+        <option value="hard">むずかしい(ライフ2 / 高速)</option>
+      </select>
+    </label>
+    <p class="hint">使い方は <a href="README.md">README.md</a> を参照してください。</p>
+  </div>
+</details>
+
+<!-- ============================================================
+     スタート画面
+     ============================================================ -->
+<div class="overlay" id="overlay-title">
+  <div class="overlay-inner panel panel-title">
+    <div class="title-hero">
+      <!-- キャラクター画像は加工せずそのまま表示（上下のゆれは平行移動のみ） -->
+      <img class="title-character" src="assets/character.png" alt="" aria-hidden="true">
+      <h1 class="title">
+        <span class="title-kicker">テントウムシの</span>
+        <span class="jp">草むらサバイバル</span>
+      </h1>
+    </div>
+
+    <!-- 体験会でひと目でわかるよう、スタートの仕方だけを大きく出す -->
+    <div class="start-cue">
+      <!-- 両手を挙げた人（手の先の線は「やった！」の動き） -->
+      <svg class="start-cue-figure" viewBox="0 0 80 80" aria-hidden="true">
+        <path class="rays" d="M10 10 L15 17 M4 22 L12 24 M70 10 L65 17 M76 22 L68 24" />
+        <path class="arms" d="M34 45 L20 16 M46 45 L60 16" />
+        <circle cx="40" cy="30" r="8" />
+        <path class="body" d="M30 44 Q30 40 34 40 H46 Q50 40 50 44 L48 76 H32 Z" />
+      </svg>
+      <p class="start-cue-text"><b>両手を挙げて</b>スタート！</p>
+    </div>
+
+    <div class="title-cta">
+      <button id="btn-play" class="btn btn-primary btn-large" hidden>ゲーム開始</button>
+      <p class="title-time-limit">制限時間は<strong>60秒</strong></p>
+      <p class="title-life-rule">ライフがなくなるとゲーム終了</p>
+    </div>
+  </div>
+  <aside class="howto-card" aria-labelledby="howto-title">
+    <h2 id="howto-title">あそびかた</h2>
+    <ul class="howto-list">
+      <li>
+        <svg class="howto-icon" viewBox="0 0 80 80" aria-hidden="true">
+          <path fill="currentColor" d="M4 40 22 22v11h36V22l18 18-18 18V47H22v11Z"/>
+        </svg>
+        <p>体を<b>左右に動かして</b><br>障害物をよけよう</p>
+      </li>
+      <li>
+        <svg class="howto-icon howto-obstacles" viewBox="0 0 80 80" aria-hidden="true">
+          <g fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+            <ellipse cx="23" cy="24" rx="17" ry="12" transform="rotate(-30 23 24)"/>
+            <path d="m12 16 11 23m-3-28 10 25m-22-9 29-7M10 33l27-8m-5 10 16 26m-3 2 6-3M65 12v29c0 7-12 6-12 17 0 12 19 12 19 0V43l-7 7"/>
+          </g>
+        </svg>
+        <p><b>クモの巣</b>・<b>カエル</b>・<b>カマキリ</b>に<br>当たると<b>ライフ</b>が減る！</p>
+      </li>
+      <li>
+        <img class="howto-icon" src="assets/items/aphid.png" alt="" aria-hidden="true">
+        <p>アブラムシで<b>スコアUP！</b></p>
+      </li>
+      <li>
+        <img class="howto-icon" src="assets/items/heart-red.png" alt="" aria-hidden="true">
+        <p>ハートで<b>ライフ回復！</b></p>
+      </li>
+    </ul>
+  </aside>
+</div>
+
+<!-- ============================================================
+     カウントダウン画面
+     ============================================================ -->
+<div class="overlay overlay-clear" id="overlay-countdown" hidden>
+  <div class="overlay-inner">
+    <div class="countdown-num" id="countdown-num">3</div>
+  </div>
+</div>
+
+<!-- ============================================================
+     リザルト画面
+     ============================================================ -->
+<div class="overlay" id="overlay-result" hidden>
+  <div class="overlay-inner panel panel-result">
+    <h2 class="result-title" id="result-title">サバイバル終了！</h2>
+    <!-- 基本の難易度をクリアしたときだけ出る（main.js の setupResultActions） -->
+    <p class="result-offer" id="result-offer" hidden>むずかしい に挑戦する？</p>
+
+    <div class="result-hero">
+      <span class="section-label">SCORE</span>
+      <span class="result-score" id="result-score">0</span>
+      <span class="new-record" id="new-record" hidden>NEW RECORD!</span>
+    </div>
+
+    <div class="result-grid">
+      <div class="stat">
+        <span class="section-label">よけた数</span>
+        <span class="result-value" id="result-dodged">0</span>
+      </div>
+      <div class="stat">
+        <span class="section-label">最大コンボ</span>
+        <span class="result-value" id="result-combo">0</span>
+      </div>
+      <div class="stat">
+        <span class="section-label">生存時間</span>
+        <span class="result-value"><span id="result-time">0</span><span class="result-unit">s</span></span>
+      </div>
+    </div>
+
+    <p class="result-best">
+      <span id="result-difficulty">ふつう</span> の自己最高記録 <span id="result-best">0</span>
+    </p>
+
+    <div class="ranking-box">
+      <p class="section-label">ランキング TOP5</p>
+      <ol id="ranking-list" class="ranking"></ol>
+    </div>
+
+    <div class="result-actions">
+      <button id="btn-retry" class="btn btn-primary btn-large">もう一度</button>
+      <button id="btn-back-title" class="btn">タイトルへ</button>
+    </div>
+    <p class="hint" id="result-hint" hidden>両手を挙げるともう一度遊べます。</p>
+  </div>
+  <aside class="howto-card retry-guide" aria-labelledby="retry-guide-title">
+    <h2 id="retry-guide-title">もう一度遊ぶには</h2>
+    <div class="retry-gesture" id="retry-gesture" aria-hidden="true">
+      <svg viewBox="0 0 100 110"><g fill="none" stroke="currentColor" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"><circle cx="50" cy="30" r="11" fill="currentColor" stroke="none"/><path d="M50 45v32M50 49 23 13M50 49 77 13M50 77 33 102M50 77 67 102"/></g></svg>
+    </div>
+    <p class="retry-primary" id="retry-primary"><b>両手を挙げて</b><br>もう一度スタート！</p>
+    <p class="result-auto" id="result-auto"></p>
+  </aside>
+</div>
+
+<!-- ============================================================
+     エラー画面
+     ============================================================ -->
+<div class="overlay" id="overlay-error" hidden>
+  <div class="overlay-inner panel">
+    <h2 class="screen-title is-error">エラーが発生しました</h2>
+    <p class="screen-sub" id="error-message">内容不明のエラーです。</p>
+    <button id="btn-reload" class="btn btn-primary btn-large">もう一度試す</button>
+    <button id="btn-keyboard" class="btn">キーボード（← →）で遊ぶ</button>
+  </div>
+</div>
+
+<script src="hit-heart.js?v=20261012-effects"></script>
+<script src="character-hit-region.js?v=20261012-marked"></script>
+<script src="outline-collision.js?v=20261012-marked"></script>
+<script src="game.js?v=20261012-effects"></script>
+<script src="sound.js?v=20261016-time-warning"></script>
+<script type="module" src="main.js?v=20261017-default-settings"></script>
+</body>
+</html>
