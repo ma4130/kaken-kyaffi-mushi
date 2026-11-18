@@ -87,14 +87,17 @@ window.Game = (function () {
     comboStepBonus: 0.5,      // 1段階あたりの倍率の増分
     comboMaxMultiplier: 3.0,  // 倍率の上限
 
-    invincibleSeconds: 1.2,
+    invincibleSeconds: 1.8,
   };
 
   /* 難易度プリセット */
   var DIFFICULTY = {
-    easy:   { label: 'やさしい',   lives: 5, speed: 26, spawnStart: 1.9,  spawnMin: 1.05, ramp: 70, timeLimit: 60, hitScale: 0.85 },
-    normal: { label: 'ふつう',     lives: 3, speed: 34, spawnStart: 1.5,  spawnMin: 0.70, ramp: 60, timeLimit: 60, hitScale: 1.00 },
-    hard:   { label: 'むずかしい', lives: 2, speed: 46, spawnStart: 1.15, spawnMin: 0.48, ramp: 45, timeLimit: 60, hitScale: 1.10 },
+    /* 幼稚園児が遊ぶので全体にやさしめ。
+         bodyScale : テントウムシの当たり判定の大きさ（1 = 見た目どおり。小さいほど当たりにくい）
+         doubles   : 2つ同時に出てくることがあるか */
+    easy:   { label: 'やさしい',   lives: 5, speed: 20, spawnStart: 2.6, spawnMin: 1.7,  ramp: 90, timeLimit: 60, hitScale: 0.80, bodyScale: 0.75, doubles: false },
+    normal: { label: 'ふつう',     lives: 4, speed: 26, spawnStart: 2.0, spawnMin: 1.15, ramp: 75, timeLimit: 60, hitScale: 0.90, bodyScale: 0.85, doubles: false },
+    hard:   { label: 'むずかしい', lives: 3, speed: 34, spawnStart: 1.5, spawnMin: 0.75, ramp: 60, timeLimit: 60, hitScale: 1.00, bodyScale: 0.95, doubles: true },
   };
 
   var OBSTACLE_KINDS = ['web', 'frog', 'mantis'];
@@ -472,7 +475,7 @@ window.Game = (function () {
       seed: Math.random() * Math.PI * 2,
       resolved: false,
     });
-    if (elapsed > D.ramp * 0.35 && Math.random() < 0.35) {
+    if (D.doubles && elapsed > D.ramp * 0.35 && Math.random() < 0.35) {
       var other = (lane + 1 + Math.floor(Math.random() * (CONFIG.laneCount - 1))) % CONFIG.laneCount;
       obstacles.push({
         x: laneX(other),
@@ -986,7 +989,10 @@ window.Game = (function () {
     var h = CONFIG.characterWorldHeight * p.s;
     var w = h * charImg.naturalWidth / charImg.naturalHeight;
     var bob = Math.sin(clock * Math.PI * 2 * CONFIG.bobHz) * CONFIG.bobAmplitude * p.s;
-    return { img: window.OutlineCollision.markedRegion(charImg), x: p.x - w / 2, y: p.y + bob - h, w: w, h: h };
+    // 難易度に合わせて判定を中心へ縮める（見た目は変えない）
+    var k = D.bodyScale || 1, cy = p.y + bob - h / 2;
+    return { img: window.OutlineCollision.markedRegion(charImg),
+      x: p.x - w * k / 2, y: cy - h * k / 2, w: w * k, h: h * k };
   }
 
   function obstacleSprite(ob) {

@@ -8,7 +8,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@700;900&family=Outfit:wght@500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=20261013-result-timer-lines">
+<link rel="stylesheet" href="style.css?v=20261118-kids">
 </head>
 <body>
 
@@ -22,6 +22,12 @@
 </div>
 
 <div class="vignette" aria-hidden="true"></div>
+
+<!-- 腕で動かすときの矢印。上げた腕の方が光る(main.js の updateArmCue) -->
+<div class="arm-cue" id="arm-cue" hidden aria-hidden="true">
+  <span class="arm-arrow arm-left">◀</span>
+  <span class="arm-arrow arm-right">▶</span>
+</div>
 
 
 <!-- ============================================================
@@ -109,7 +115,14 @@
       </select>
     </label>
     <label>
-      <span>感度(小さく動かすだけで大きく動く)</span>
+      <span>動かし方</span>
+      <select id="set-control">
+        <option value="arm">上げた腕の方へ動く(おすすめ)</option>
+        <option value="body">体を左右に動かす</option>
+      </select>
+    </label>
+    <label>
+      <span>感度(体で動かすとき。小さく動かすだけで大きく動く)</span>
       <input type="range" id="set-sensitivity" min="0.6" max="3.0" step="0.1" value="1.5">
       <output id="set-sensitivity-value">1.5</output>
     </label>
@@ -126,9 +139,9 @@
     <label>
       <span>難易度(タイトル画面で 1・2・3 キーでも変更可)</span>
       <select id="set-difficulty">
-        <option value="easy">やさしい(ライフ5 / ゆっくり)</option>
-        <option value="normal">ふつう(ライフ3 / 標準)</option>
-        <option value="hard">むずかしい(ライフ2 / 高速)</option>
+        <option value="easy">やさしい(ライフ5 / ゆっくり・幼児向け)</option>
+        <option value="normal">ふつう(ライフ4 / 少し速い)</option>
+        <option value="hard">むずかしい(ライフ3 / 速い)</option>
       </select>
     </label>
     <p class="hint">使い方は <a href="README.md">README.md</a> を参照してください。</p>
@@ -174,7 +187,7 @@
         <svg class="howto-icon" viewBox="0 0 80 80" aria-hidden="true">
           <path fill="currentColor" d="M4 40 22 22v11h36V22l18 18-18 18V47H22v11Z"/>
         </svg>
-        <p>体を<b>左右に動かして</b><br>障害物をよけよう</p>
+        <p id="howto-move"><b>右手</b>を上げると右へ<br><b>左手</b>を上げると左へ</p>
       </li>
       <li>
         <img class="howto-icon howto-obstacles" src="assets/obstacles/web.png" alt="" aria-hidden="true">
@@ -268,11 +281,11 @@
   </div>
 </div>
 
-<script src="hit-heart.js?v=20261012-effects"></script>
-<script src="character-hit-region.js?v=20261012-marked"></script>
-<script src="outline-collision.js?v=20261012-marked"></script>
-<script src="game.js?v=20261012-effects"></script>
-<script src="sound.js?v=20261016-time-warning"></script>
-<script type="module" src="main.js?v=20261017-default-settings"></script>
+<script src="hit-heart.js?v=20261118-kids"></script>
+<script src="character-hit-region.js?v=20261118-kids"></script>
+<script src="outline-collision.js?v=20261118-kids"></script>
+<script src="game.js?v=20261118-kids"></script>
+<script src="sound.js?v=20261118-kids"></script>
+<script type="module" src="main.js?v=20261118-kids"></script>
 </body>
 </html>

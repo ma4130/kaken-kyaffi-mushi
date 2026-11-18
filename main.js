@@ -29,6 +29,8 @@ const CONFIG = {
   DEADZONE: 0.06,              // この範囲の微動は無視する
   KEYBOARD_TAKEOVER_SECONDS: 2.5,
   KEYBOARD_SPEED: 1.6,         // キー操作のときの移動速度（1秒あたり）
+  ARM_SPEED: 1.3,              // 腕を上げているあいだの移動速度（1秒あたり。-1〜+1 の幅で）
+  ARM_MARGIN: 0.02,            // 手首が肩よりこれだけ上なら「腕を上げた」とみなす
   RESULT_IDLE_SECONDS: 10,     // 結果画面で何もしなければタイトルに戻るまでの秒数
   RESULT_DONE_SECONDS: 8,      // 挑戦を遊び終えたあと、タイトルに戻るまでの秒数
 
@@ -80,6 +82,7 @@ const setSensitivity = $("set-sensitivity");
 const setSmoothing = $("set-smoothing");
 const setMirror = $("set-mirror");
 const setDifficulty = $("set-difficulty");
+const setControl = $("set-control");
 const setTheme = $("set-theme");
 const setCamera = $("set-camera");
 const setShowStartButton = $("set-show-start-button");
@@ -87,7 +90,7 @@ const setShowStartButton = $("set-show-start-button");
 /* ------------------------------------------------------------
    設定（localStorage に保存）
    ------------------------------------------------------------ */
-const defaultSettings = { sensitivity: 1.5, smoothing: 14, mirror: true, difficulty: "normal", theme: "light", showStartButton: false, cameraId: "" };
+const defaultSettings = { sensitivity: 1.5, smoothing: 14, mirror: true, difficulty: "easy", control: "arm", theme: "light", showStartButton: false, cameraId: "" };
 let settings = Object.assign({}, defaultSettings);
 
 function loadSettings() {
@@ -148,6 +151,8 @@ let standbyPoseSamples = [];
 let personTimer = 0;
 let handsTimer = 0;
 let keyboardX = 0;
+let armX = 0;             // 腕で動かすときの位置（-1〜+1）
+let armDir = 0;           // いま上げている腕の向き（-1=左 / 0 / +1=右）
 let keyboardActive = 0; // キー操作してからの残り猶予（秒）
 let keyLeft = false, keyRight = false;
 let keyboardOnly = false; // カメラなしでキーボードだけで遊んでいる
@@ -255,6 +260,23 @@ function areHandsRaised(lms) {
   const lw = lms[LM.L_WRIST], rw = lms[LM.R_WRIST];
   if (!ls || !rs || !lw || !rw) return false;
   return lw.y < ls.y - 0.02 && rw.y < rs.y - 0.02;
+}
+
+/* 上げている腕の向きを返す（-1=左へ / +1=右へ / 0=どちらも上げていない・両方上げている）。
+   MediaPipe の左右の名前には頼らず、手首が体の中心より映像のどちら側にあるかで決める。
+   鏡像表示のときは、本人から見て右の手（映像では左側）で右へ動く。 */
+function armDirection(lms) {
+  const ls = lms[LM.L_SHOULDER], rs = lms[LM.R_SHOULDER];
+  if (!ls || !rs) return 0;
+  const cx = (ls.x + rs.x) / 2;
+  const shoulderY = Math.min(ls.y, rs.y);
+  let dir = 0;
+  for (const w of [lms[LM.L_WRIST], lms[LM.R_WRIST]]) {
+    if (!w || (w.visibility !== undefined && w.visibility < 0.3)) continue;
+    if (w.y < shoulderY - CONFIG.ARM_MARGIN) dir += Math.sign(w.x - cx);
+  }
+  dir = Math.max(-1, Math.min(1, dir));
+  return settings.mirror ? -dir : dir;
 }
 
 /* 体のズレ量を -1〜+1 に変換する */
@@ -500,6 +522,7 @@ function startCountdown() {
   calib.shoulderWidth = widths.length ? widths.reduce((sum, sample) => sum + sample.shoulderWidth, 0) / widths.length : 0.2;
   smoothedX = calib.centerX;
   keyboardX = 0;
+  armX = 0;
   HitHeart.clear();
   Game.resetRun();
   Sound.ready();
@@ -564,6 +587,15 @@ function selectDifficulty(key) {
 }
 setDifficulty.addEventListener("change", () => selectDifficulty(setDifficulty.value));
 
+/* 腕で動かすときの矢印（上げた腕の方が光る） */
+const armCue = $("arm-cue");
+function updateArmCue() {
+  const show = settings.control !== "body" && !keyboardOnly && (state === S.PLAY || state === S.COUNTDOWN);
+  armCue.hidden = !show;
+  if (!show) return;
+  armCue.dataset.dir = armDir < 0 ? "left" : armDir > 0 ? "right" : "";
+}
+
 /* 設定 */
 function applySettingsToUI() {
   applyTheme();
@@ -576,6 +608,8 @@ function applySettingsToUI() {
   videoEl.classList.toggle("mirrored", settings.mirror);
   overlayCanvas.classList.toggle("mirrored", settings.mirror);
   setDifficulty.value = settings.difficulty;
+  setControl.value = settings.control === "body" ? "body" : "arm";
+  applyControlText();
 }
 function applyStartButtonVisibility() {
   settings.showStartButton = settings.showStartButton !== false;
@@ -605,6 +639,17 @@ setSensitivity.addEventListener("input", () => {
 setSmoothing.addEventListener("input", () => {
   settings.smoothing = parseFloat(setSmoothing.value);
   $("set-smoothing-value").textContent = settings.smoothing.toFixed(1);
+  saveSettings();
+});
+function applyControlText() {
+  $("howto-move").innerHTML = settings.control === "body"
+    ? "体を<b>左右に動かして</b><br>障害物をよけよう"
+    : "<b>右手</b>を上げると右へ<br><b>左手</b>を上げると左へ";
+}
+setControl.addEventListener("change", () => {
+  settings.control = setControl.value === "body" ? "body" : "arm";
+  armX = keyboardX;
+  applyControlText();
   saveSettings();
 });
 setMirror.addEventListener("change", () => {
@@ -843,9 +888,16 @@ function loop(now) {
     const dir = (keyRight ? 1 : 0) - (keyLeft ? 1 : 0);
     keyboardX = Math.max(-1, Math.min(1, keyboardX + dir * CONFIG.KEYBOARD_SPEED * dt));
   }
+  armDir = landmarks && settings.control !== "body" ? armDirection(landmarks) : 0;
   let input = null;
   if (keyboardActive > 0 || keyboardOnly) {
     input = keyboardX;
+    armX = keyboardX;
+  } else if (settings.control !== "body") {
+    // 上げた腕の方へ、上げているあいだだけ進む。下ろすとその場にとどまる
+    armX = Math.max(-1, Math.min(1, armX + armDir * CONFIG.ARM_SPEED * dt));
+    if (landmarks || state === S.PLAY) input = armX;
+    keyboardX = armX;
   } else {
     input = poseToNormalized();
     if (input !== null) keyboardX = input; // キー操作へ切り替わったときに飛ばない
@@ -855,6 +907,7 @@ function loop(now) {
     input = state === S.PLAY ? 0 : Math.sin(now / 1000 * 0.5) * 0.45;
   }
   Game.setInput(input);
+  updateArmCue();
 
   // --- 状態ごとの処理 ---
   stateTimer += dt;

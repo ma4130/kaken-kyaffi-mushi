@@ -1123,3 +1123,31 @@ body[data-screen="title"] .controls { display: none; }
 :root[data-theme="light"] .screen-title { text-shadow: none; }
 :root[data-theme="light"] .calib-track { stroke: #c1e2ec; }
 :root[data-theme="light"] .pip.lost { background: #71929e; opacity: .55; }
+
+/* ------------------------------------------------------------
+   腕で動かすときの矢印（上げた腕の方が光る）
+   ------------------------------------------------------------ */
+.arm-cue {
+  position: fixed;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+}
+.arm-cue[hidden] { display: none; }
+.arm-arrow {
+  position: absolute;
+  top: 52%;
+  transform: translateY(-50%) scale(.9);
+  font-size: clamp(48px, 9vw, 110px);
+  line-height: 1;
+  color: rgba(255, 255, 255, .28);
+  text-shadow: 0 2px 10px rgba(0, 0, 0, .25);
+  transition: transform .15s var(--ease-out), color .15s;
+}
+.arm-left  { left: clamp(10px, 4vw, 60px); }
+.arm-right { right: clamp(10px, 4vw, 60px); }
+.arm-cue[data-dir="left"]  .arm-left,
+.arm-cue[data-dir="right"] .arm-right {
+  color: #ffd23a;
+  transform: translateY(-50%) scale(1.15);
+}
