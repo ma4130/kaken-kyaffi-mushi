@@ -20,6 +20,7 @@ window.Game = (function () {
   var CONFIG = {
     /* --- 見え方（すべて画面サイズに対する比率なので解像度に依存しない） --- */
     focalRatio: 0.66,         // 焦点距離 = 画面高さ × この値。大きいほど望遠になる
+    focalWidthRatio: 0.62,    // ただし 画面の幅 × この値 より大きくしない（縦長の画面向け）
     horizonRatio: 0.34,       // 水平線の高さ（画面高さに対する比率）
     playerScreenRatio: 0.82,  // キャラクターの足元が来る画面上の位置
     playerZ: 7,               // キャラクターの奥行き（ワールド単位）
@@ -227,9 +228,10 @@ window.Game = (function () {
 
     cx = W / 2;
     horizonY = H * CONFIG.horizonRatio;
-    focal = H * CONFIG.focalRatio;
-    // キャラクターの足元がちょうど playerScreenRatio の高さに来るカメラ高さ
-    camH = (CONFIG.playerScreenRatio - CONFIG.horizonRatio) * CONFIG.playerZ / CONFIG.focalRatio;
+    // 縦長の画面（スマホの縦持ち）では幅で決める。高さで決めると道もキャラクターも大きくなりすぎる
+    focal = Math.min(H * CONFIG.focalRatio, W * CONFIG.focalWidthRatio);
+    // キャラクターの足元がちょうど playerScreenRatio の高さに来るカメラ高さ（ワールド単位）
+    camH = (CONFIG.playerScreenRatio - CONFIG.horizonRatio) * H * CONFIG.playerZ / focal;
     base();
   }
 

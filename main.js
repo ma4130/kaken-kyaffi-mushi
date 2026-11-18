@@ -156,6 +156,12 @@ let armDir = 0;           // いま上げている腕の向き（-1=左 / 0 / +1
 let keyboardActive = 0; // キー操作してからの残り猶予（秒）
 let keyLeft = false, keyRight = false;
 let keyboardOnly = false; // カメラなしでキーボードだけで遊んでいる
+/* スマホ・タブレットなど指で操作する端末か */
+// URL に ?touch を付けると、パソコンでもスマホと同じ表示・操作にできる（確認用）
+const IS_TOUCH = new URLSearchParams(location.search).has("touch")
+  || window.matchMedia("(pointer: coarse)").matches || navigator.maxTouchPoints > 0;
+document.documentElement.classList.toggle("is-touch", IS_TOUCH);
+let touchLeft = false, touchRight = false;
 
 let lastHudUpdate = 0;
 let lastCountdownShown = -1;
@@ -569,7 +575,9 @@ $("btn-keyboard").addEventListener("click", () => {
   Sound.unlock();
   Sound.click();
   keyboardOnly = true;
+  document.documentElement.classList.add("no-camera");
   enterState(S.TITLE);
+  applyControlText();
 });
 
 /* 難易度（画面には出さない裏設定。設定パネルか、タイトル画面の 1・2・3 キーで変える）
@@ -587,13 +595,26 @@ function selectDifficulty(key) {
 }
 setDifficulty.addEventListener("change", () => selectDifficulty(setDifficulty.value));
 
-/* 腕で動かすときの矢印（上げた腕の方が光る） */
+/* 腕で動かすときの矢印（上げた腕の方が光る）。タッチ端末では押して動かすボタンにもなる */
 const armCue = $("arm-cue");
 function updateArmCue() {
-  const show = settings.control !== "body" && !keyboardOnly && (state === S.PLAY || state === S.COUNTDOWN);
+  const playing = state === S.PLAY || state === S.COUNTDOWN;
+  // タッチ端末では、この矢印がそのまま押して動かすボタンになる
+  const show = playing && (IS_TOUCH || (settings.control !== "body" && !keyboardOnly));
   armCue.hidden = !show;
-  if (!show) return;
-  armCue.dataset.dir = armDir < 0 ? "left" : armDir > 0 ? "right" : "";
+  if (!show) { touchLeft = touchRight = false; return; }
+  const dir = touchLeft !== touchRight ? (touchRight ? 1 : -1) : armDir;
+  armCue.dataset.dir = dir < 0 ? "left" : dir > 0 ? "right" : "";
+}
+armCue.classList.toggle("touch", IS_TOUCH);
+for (const [el, side] of [[armCue.querySelector(".arm-left"), "left"], [armCue.querySelector(".arm-right"), "right"]]) {
+  const set = (on) => (e) => {
+    if (side === "left") touchLeft = on; else touchRight = on;
+    if (on) { Sound.unlock(); e.preventDefault(); }
+  };
+  el.addEventListener("pointerdown", set(true));
+  for (const ev of ["pointerup", "pointercancel", "pointerleave"]) el.addEventListener(ev, set(false));
+  el.addEventListener("contextmenu", (e) => e.preventDefault());
 }
 
 /* 設定 */
@@ -614,7 +635,8 @@ function applySettingsToUI() {
 function applyStartButtonVisibility() {
   settings.showStartButton = settings.showStartButton !== false;
   setShowStartButton.checked = settings.showStartButton;
-  btnPlay.hidden = !settings.showStartButton;
+  // 指で操作する端末では、両手を挙げなくても始められるよう常に出す
+  btnPlay.hidden = !(settings.showStartButton || IS_TOUCH);
 }
 setShowStartButton.addEventListener("change", () => {
   settings.showStartButton = setShowStartButton.checked;
@@ -642,6 +664,10 @@ setSmoothing.addEventListener("input", () => {
   saveSettings();
 });
 function applyControlText() {
+  if (IS_TOUCH && keyboardOnly) {
+    $("howto-move").innerHTML = "画面の<b>◀ ▶</b>を<br>押して動かそう";
+    return;
+  }
   $("howto-move").innerHTML = settings.control === "body"
     ? "体を<b>左右に動かして</b><br>障害物をよけよう"
     : "<b>右手</b>を上げると右へ<br><b>左手</b>を上げると左へ";
@@ -884,8 +910,9 @@ function loop(now) {
 
   // --- 入力（キー操作が優先。しばらく操作がなければ体の位置に戻る） ---
   if (keyboardActive > 0) keyboardActive = Math.max(0, keyboardActive - dt);
-  if (keyLeft || keyRight) {
-    const dir = (keyRight ? 1 : 0) - (keyLeft ? 1 : 0);
+  if (keyLeft || keyRight || touchLeft || touchRight) {
+    if (touchLeft || touchRight) keyboardActive = CONFIG.KEYBOARD_TAKEOVER_SECONDS;
+    const dir = (keyRight || touchRight ? 1 : 0) - (keyLeft || touchLeft ? 1 : 0);
     keyboardX = Math.max(-1, Math.min(1, keyboardX + dir * CONFIG.KEYBOARD_SPEED * dt));
   }
   armDir = landmarks && settings.control !== "body" ? armDirection(landmarks) : 0;
@@ -958,7 +985,7 @@ function loop(now) {
     if (state === S.PLAY) updateHud();
     updateButtons();
     if (state !== S.ERROR) {
-      if (keyboardOnly) setStatus("キーボード（← →）で操作します");
+      if (keyboardOnly) setStatus(IS_TOUCH ? "画面の ◀ ▶ を押して操作します" : "キーボード（← →）で操作します");
       else if (!tracked) setStatus("カメラの前に立ってください");
       else if (state === S.PLAY) setStatus("体を左右に動かしてよけよう");
       else setStatus("追跡できています");
@@ -1005,3 +1032,6 @@ async function main() {
 }
 
 main();
+
+/* タッチ端末では「キーボードで遊ぶ」を「タッチで遊ぶ」と出す */
+if (IS_TOUCH) $("btn-keyboard").textContent = "タッチ（◀ ▶）で遊ぶ";
