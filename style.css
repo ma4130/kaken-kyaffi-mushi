@@ -1231,3 +1231,5 @@ body[data-screen="title"] .controls { display: none; }
 /* 結果画面とタイトルのスコア・ランキングも出さない（結果画面は「生存時間」だけ残す） */
 .result-hero, .stat-dodged, .stat-combo, .result-best, .ranking-box, .title-ranking { display: none !important; }
 .result-grid { grid-template-columns: minmax(0, 1fr) !important; justify-items: center; }
+/* カメラの小窓は映像だけにする（POSE TRACKING・未検出/追跡中・説明の文字を出さない） */
+.camera-dock .dock-label, .camera-dock .track-badge, .camera-dock .status { display: none !important; }
