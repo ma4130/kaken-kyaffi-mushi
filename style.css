@@ -1228,3 +1228,6 @@ body[data-screen="title"] .controls { display: none; }
 /* よけるだけのゲームにしたので、スコア・コンボ・よけた数と、
    スタート・基準合わせのボタンは出さない（ストップだけ残す） */
 .hud-score, #hud-combo-item, .hud-dodged-item, #btn-start, #btn-recalib { display: none !important; }
+/* 結果画面とタイトルのスコア・ランキングも出さない（結果画面は「生存時間」だけ残す） */
+.result-hero, .stat-dodged, .stat-combo, .result-best, .ranking-box, .title-ranking { display: none !important; }
+.result-grid { grid-template-columns: minmax(0, 1fr) !important; justify-items: center; }

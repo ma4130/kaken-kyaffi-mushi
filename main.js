@@ -510,7 +510,7 @@ function showResult(reason) {
   if (reason === "time") Sound.clear();
   else if (reason === "life") Sound.gameover();
   else Sound.ambient(0.05, 1.2);
-  if (isRecord) Sound.record();
+  // スコアは出さないので、記録更新の音も鳴らさない
 
   enterState(S.RESULT);
   lastResultAutoShown = -1;
