@@ -1224,3 +1224,7 @@ body[data-screen="title"] .controls { display: none; }
 /* タッチ端末のプレイ中は「設定」を隠す（▶ ボタンと重なるため。止めるときは「ストップ」） */
 .is-touch body[data-screen="play"] .settings-dock,
 .is-touch body[data-screen="countdown"] .settings-dock { display: none; }
+
+/* よけるだけのゲームにしたので、スコア・コンボ・よけた数と、
+   スタート・基準合わせのボタンは出さない（ストップだけ残す） */
+.hud-score, #hud-combo-item, .hud-dodged-item, #btn-start, #btn-recalib { display: none !important; }

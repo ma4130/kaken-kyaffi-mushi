@@ -83,6 +83,7 @@ window.Game = (function () {
     buoyImages: { left: 'assets/flowers/dandelion.png', right: 'assets/flowers/cosmos.png' },
 
     /* --- アイテム --- */
+    itemsEnabled: false,      // アブラムシ・ハートを出すか（いまは出さない。よけるだけのゲーム）
     itemFirstDelay: 4.0,      // 最初のアイテムが出るまでの秒数
     itemInterval: 6.0,        // アイテムの出現間隔（秒）
     itemJitter: 2.0,          // 出現間隔のばらつき（秒）
@@ -416,7 +417,7 @@ window.Game = (function () {
     // アイテムの出現
     itemTimer -= dt;
     if (itemTimer <= 0) {
-      spawnItem();
+      if (CONFIG.itemsEnabled) spawnItem();
       itemTimer = CONFIG.itemInterval + (Math.random() - 0.5) * 2 * CONFIG.itemJitter;
     }
 
@@ -446,7 +447,6 @@ window.Game = (function () {
           if (combo > bestCombo) bestCombo = combo;
           var gain = Math.round(CONFIG.scorePerDodge * multiplier());
           scoreAcc += gain;
-          popText(ob.x, ob.z, '+' + gain, '#fffbe8');
           burst(ob.x, ob.z, 7, '#d6ffa8');
           emit('dodge', { dodged: dodged, combo: combo, multiplier: multiplier() });
         }
@@ -558,7 +558,7 @@ window.Game = (function () {
     if (spawnTimer <= 0) { spawnFall(); spawnTimer = currentSpawnInterval(); }
     itemTimer -= dt;
     if (itemTimer <= 0) {
-      spawnFallItem();
+      if (CONFIG.itemsEnabled) spawnFallItem();
       itemTimer = CONFIG.itemInterval + (Math.random() - 0.5) * 2 * CONFIG.itemJitter;
     }
 
@@ -590,7 +590,6 @@ window.Game = (function () {
         if (combo > bestCombo) bestCombo = combo;
         var gain = Math.round(CONFIG.scorePerDodge * multiplier());
         scoreAcc += gain;
-        popAt(sp.x + sp.w / 2, c.y - c.h * 0.6, '+' + gain, '#fffbe8');
         burstAt(sp.x + sp.w / 2, c.y - 6, 7, '#d6ffa8');
         emit('dodge', { dodged: dodged, combo: combo, multiplier: multiplier() });
       }
