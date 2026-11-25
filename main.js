@@ -591,7 +591,12 @@ function selectDifficulty(key) {
   settings.difficulty = key;
   saveSettings();
   setDifficulty.value = key;
-  Game.setDifficulty(settings.difficulty);
+  // 今回のプレイの難易度も変える（ゲーム開始時は runDifficulty が使われるので、
+  // ここで変えないと直後の1回が前の難易度のままになる）。プレイ中・カウントダウン中は次の回から
+  if (state !== S.PLAY && state !== S.COUNTDOWN) {
+    runDifficulty = key;
+    Game.setDifficulty(key);
+  }
   refreshTitleBest();
 }
 setDifficulty.addEventListener("change", () => selectDifficulty(setDifficulty.value));
