@@ -113,9 +113,9 @@ window.Game = (function () {
          bodyScale : テントウムシの当たり判定の大きさ（1 = 見た目どおり。小さいほど当たりにくい）
          doubles   : 2つ同時に出てくることがあるか */
     /* fallSpeed: 上から降ってくるモードの落ちる速さ（1秒に画面の高さの何倍） */
-    easy:   { label: 'やさしい',   lives: 5, fallSpeed: 0.24, speed: 20, spawnStart: 2.6, spawnMin: 1.7,  ramp: 90, timeLimit: 60, hitScale: 0.80, bodyScale: 0.75, doubles: false },
-    normal: { label: 'ふつう',     lives: 4, fallSpeed: 0.32, speed: 26, spawnStart: 2.0, spawnMin: 1.15, ramp: 75, timeLimit: 60, hitScale: 0.90, bodyScale: 0.85, doubles: false },
-    hard:   { label: 'むずかしい', lives: 3, fallSpeed: 0.42, speed: 34, spawnStart: 1.5, spawnMin: 0.75, ramp: 60, timeLimit: 60, hitScale: 1.00, bodyScale: 0.95, doubles: true },
+    easy:   { label: 'やさしい',   lives: 5, fallSpeed: 0.24, speed: 20, spawnStart: 2.6, spawnMin: 1.7,  ramp: 20, timeLimit: 20, hitScale: 0.80, bodyScale: 0.75, doubles: false },
+    normal: { label: 'ふつう',     lives: 4, fallSpeed: 0.32, speed: 26, spawnStart: 2.0, spawnMin: 1.15, ramp: 20, timeLimit: 20, hitScale: 0.90, bodyScale: 0.85, doubles: false },
+    hard:   { label: 'むずかしい', lives: 3, fallSpeed: 0.42, speed: 34, spawnStart: 1.5, spawnMin: 0.75, ramp: 20, timeLimit: 20, hitScale: 1.00, bodyScale: 0.95, doubles: true },
   };
 
   var OBSTACLE_KINDS = ['web', 'frog', 'mantis'];

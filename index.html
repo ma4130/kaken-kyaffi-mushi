@@ -8,7 +8,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@700;900&family=Outfit:wght@500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=20261125-nolabel">
+<link rel="stylesheet" href="style.css?v=20261125-stop20b">
 </head>
 <body>
 
@@ -35,6 +35,8 @@
      ============================================================ -->
 <div class="hud" id="hud" hidden>
   <div class="hud-group">
+    <!-- ストップは秒数のすぐ横に置く（上のボタン列は使わない） -->
+    <button id="btn-stop" class="btn btn-sm hud-stop" disabled>■ ストップ</button>
     <div class="hud-item hud-score">
       <span class="hud-label">SCORE</span>
       <span class="hud-value"><span id="hud-score">0</span></span>
@@ -46,7 +48,7 @@
   </div>
   <div class="hud-item hud-time">
     <span class="hud-label">TIME</span>
-    <span class="hud-value"><span id="hud-time">60</span><span class="hud-unit">s</span></span>
+    <span class="hud-value"><span id="hud-time">20</span><span class="hud-unit">s</span></span>
   </div>
   <div class="hud-group">
     <div class="hud-item hud-dodged-item">
@@ -86,7 +88,6 @@
      ============================================================ -->
 <nav class="controls" id="controls" aria-label="ゲーム操作">
   <button id="btn-start" class="btn btn-primary btn-sm">▶ スタート</button>
-  <button id="btn-stop" class="btn btn-sm" disabled>■ ストップ</button>
   <button id="btn-recalib" class="btn btn-sm" disabled><span class="lbl-long">基準を</span>合わせ直す</button>
 </nav>
 
@@ -183,7 +184,7 @@
 
     <div class="title-cta">
       <button id="btn-play" class="btn btn-primary btn-large" hidden>ゲーム開始</button>
-      <p class="title-time-limit">制限時間は<strong>60秒</strong></p>
+      <p class="title-time-limit">制限時間は<strong>20秒</strong></p>
       <p class="title-life-rule">ライフがなくなるとゲーム終了</p>
     </div>
   </div>
@@ -280,11 +281,11 @@
   </div>
 </div>
 
-<script src="hit-heart.js?v=20261125-nolabel"></script>
-<script src="character-hit-region.js?v=20261125-nolabel"></script>
-<script src="outline-collision.js?v=20261125-nolabel"></script>
-<script src="game.js?v=20261125-nolabel"></script>
-<script src="sound.js?v=20261125-nolabel"></script>
-<script type="module" src="main.js?v=20261125-nolabel"></script>
+<script src="hit-heart.js?v=20261125-stop20b"></script>
+<script src="character-hit-region.js?v=20261125-stop20b"></script>
+<script src="outline-collision.js?v=20261125-stop20b"></script>
+<script src="game.js?v=20261125-stop20b"></script>
+<script src="sound.js?v=20261125-stop20b"></script>
+<script type="module" src="main.js?v=20261125-stop20b"></script>
 </body>
 </html>

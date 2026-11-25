@@ -1231,5 +1231,10 @@ body[data-screen="title"] .controls { display: none; }
 /* 結果画面とタイトルのスコア・ランキングも出さない（結果画面は「生存時間」だけ残す） */
 .result-hero, .stat-dodged, .stat-combo, .result-best, .ranking-box, .title-ranking { display: none !important; }
 .result-grid { grid-template-columns: minmax(0, 1fr) !important; justify-items: center; }
-/* カメラの小窓は映像だけにする（POSE TRACKING・未検出/追跡中・説明の文字を出さない） */
-.camera-dock .dock-label, .camera-dock .track-badge, .camera-dock .status { display: none !important; }
+/* カメラの小窓の文字は「未検出／追跡中」だけ残す（POSE TRACKING と説明の文字は出さない） */
+.camera-dock .dock-label, .camera-dock .status { display: none !important; }
+
+/* ストップは秒数の横（HUD の中）。HUD はふだん押せないので、このボタンだけ押せるようにする */
+.controls { display: none !important; }
+.hud .hud-stop { pointer-events: auto; align-self: center; white-space: nowrap; }
+@media (max-width: 760px) { .hud .hud-stop { align-self: stretch; } }
