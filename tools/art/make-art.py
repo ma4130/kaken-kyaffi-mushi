@@ -304,11 +304,72 @@ def background(name, sky, ground, hills, blade, sun=None, moon=False, stars=Fals
     save(name, W, H, ''.join(b), defs)
 
 
+# ------------------------------------------------------------------
+# 上から降ってくるモードの障害物：クモ・どんぐり・雨つぶ・落ち葉
+# （クモの糸はゲームの中で線として描く）
+# ------------------------------------------------------------------
+def spider():
+    cx, cy = 120, 120
+    legs = ''
+    for side in (-1, 1):
+        for a, l in [(-50, 78), (-15, 86), (20, 82), (55, 72)]:
+            ang = math.radians(a)
+            kx = cx + side * math.cos(ang) * 46
+            ky = cy + math.sin(ang) * 46 - 22
+            ex = cx + side * math.cos(ang) * l
+            ey = cy + math.sin(ang) * l + 26
+            legs += '<path d="M%d %d Q%.0f %.0f %.0f %.0f"/>' % (cx, cy, kx, ky, ex, ey)
+    b = ['<g stroke="#2b1f3a" stroke-width="10" fill="none" stroke-linecap="round">%s</g>' % legs]
+    b.append('<ellipse cx="120" cy="138" rx="44" ry="48" fill="#3b2a52" stroke="#1a1026" stroke-width="6"/>')
+    b.append('<path d="M120 128 l-14 18 h28 z" fill="#f2c94c"/>')
+    b.append('<circle cx="120" cy="96" r="32" fill="#4a3566" stroke="#1a1026" stroke-width="6"/>')
+    for ex in (-13, 13):
+        b.append('<circle cx="%d" cy="92" r="11" fill="#fff"/><circle cx="%d" cy="94" r="6" fill="#c0182b"/>' % (120 + ex, 120 + ex))
+    b.append('<path d="M110 110 q10 8 20 0" stroke="#fff" stroke-width="4" fill="none"/>')
+    b.append('<path d="M120 0 V64" stroke="#e8e8f0" stroke-width="3"/>')
+    save('spider', 240, 220, ''.join(b))
+
+
+def acorn():
+    b = ['<path d="M110 8 q6 18 -2 30" stroke="#6b4423" stroke-width="10" fill="none" stroke-linecap="round"/>']
+    b.append('<path d="M40 150 Q40 250 110 262 Q180 250 180 150 Z" fill="#c9843e" stroke="#6b4423" stroke-width="7"/>')
+    b.append('<ellipse cx="86" cy="190" rx="14" ry="30" fill="#fff" opacity=".35"/>')
+    b.append('<path d="M24 120 Q30 40 110 38 Q190 40 196 120 Q196 160 110 160 Q24 160 24 120Z" fill="#8a5a2b" stroke="#4e3015" stroke-width="7"/>')
+    for x in range(44, 190, 22):
+        b.append('<path d="M%d 64 l10 70" stroke="#6b4423" stroke-width="4"/>' % x)
+    save('acorn', 220, 270, ''.join(b))
+
+
+def raindrop():
+    defs = ('<linearGradient id="rd" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#bfe9ff"/>'
+            '<stop offset="1" stop-color="#3aa0e6"/></linearGradient>')
+    b = ['<path d="M100 10 Q40 110 34 160 Q30 230 100 236 Q170 230 166 160 Q160 110 100 10Z" fill="url(#rd)" stroke="#1f6fae" stroke-width="7"/>']
+    b.append('<ellipse cx="72" cy="150" rx="12" ry="30" fill="#fff" opacity=".6" transform="rotate(15 72 150)"/>')
+    for ex in (82, 118):
+        b.append('<circle cx="%d" cy="176" r="8" fill="#103a5e"/><circle cx="%d" cy="173" r="3" fill="#fff"/>' % (ex, ex + 2))
+    b.append('<path d="M88 198 Q100 208 112 198" stroke="#103a5e" stroke-width="5" fill="none" stroke-linecap="round"/>')
+    save('raindrop', 200, 246, defs=defs, body=''.join(b))
+
+
+def leaf():
+    b = ['<path d="M30 230 Q20 90 150 20 Q250 130 150 210 Q90 250 30 230Z" fill="#e8892c" stroke="#9a4a10" stroke-width="7"/>']
+    b.append('<path d="M30 230 Q100 140 150 20" stroke="#9a4a10" stroke-width="6" fill="none"/>')
+    for t in (0.3, 0.5, 0.7):
+        x = 30 + 120 * t; y = 230 - 210 * t
+        b.append('<path d="M%.0f %.0f q40 10 70 -10 M%.0f %.0f q-10 -30 -10 -60" stroke="#9a4a10" stroke-width="4" fill="none"/>' % (x, y, x, y))
+    b.append('<path d="M30 230 l-18 16" stroke="#9a4a10" stroke-width="7" stroke-linecap="round"/>')
+    save('leaf', 240, 260, ''.join(b))
+
+
 ladybug()
 web()
 frog()
 mantis()
 aphid()
+spider()
+acorn()
+raindrop()
+leaf()
 flower('dandelion', '#ffd23a', '#d99a00', '#ffb300', 22, 9, 44)
 flower('cosmos', '#ff9cc8', '#d9578f', '#ffd23a', 8, 22, 46)
 

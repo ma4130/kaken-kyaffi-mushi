@@ -1209,7 +1209,7 @@ body[data-screen="title"] .controls { display: none; }
   .hud { transform: scale(.66); transform-origin: top center; padding: 4px 8px 8px; width: 151.5%; left: -25.75%; }
   .controls { transform: translateX(-50%) scale(.72); transform-origin: top center; }
   body[data-screen="play"] .controls,
-  body[data-screen="countdown"] .controls { top: auto; bottom: 10px; transform-origin: bottom center; }
+  body[data-screen="countdown"] .controls { top: 6px; left: 6px; transform: scale(.62); transform-origin: top left; }
 }
 /* カメラを使わずタッチで遊んでいるときは、カメラ小窓を出さない */
 .no-camera.is-touch .camera-dock { display: none; }

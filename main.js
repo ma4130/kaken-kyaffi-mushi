@@ -83,6 +83,7 @@ const setSmoothing = $("set-smoothing");
 const setMirror = $("set-mirror");
 const setDifficulty = $("set-difficulty");
 const setControl = $("set-control");
+const setView = $("set-view");
 const setTheme = $("set-theme");
 const setCamera = $("set-camera");
 const setShowStartButton = $("set-show-start-button");
@@ -90,7 +91,7 @@ const setShowStartButton = $("set-show-start-button");
 /* ------------------------------------------------------------
    設定（localStorage に保存）
    ------------------------------------------------------------ */
-const defaultSettings = { sensitivity: 1.5, smoothing: 14, mirror: true, difficulty: "easy", control: "arm", theme: "light", showStartButton: false, cameraId: "" };
+const defaultSettings = { sensitivity: 1.5, smoothing: 14, mirror: true, difficulty: "easy", view: "fall", control: "arm", theme: "light", showStartButton: false, cameraId: "" };
 let settings = Object.assign({}, defaultSettings);
 
 function loadSettings() {
@@ -630,6 +631,8 @@ function applySettingsToUI() {
   overlayCanvas.classList.toggle("mirrored", settings.mirror);
   setDifficulty.value = settings.difficulty;
   setControl.value = settings.control === "body" ? "body" : "arm";
+  setView.value = settings.view === "perspective" ? "perspective" : "fall";
+  applyViewText();
   applyControlText();
 }
 function applyStartButtonVisibility() {
@@ -672,6 +675,20 @@ function applyControlText() {
     ? "体を<b>左右に動かして</b><br>障害物をよけよう"
     : "<b>右手</b>を上げると右へ<br><b>左手</b>を上げると左へ";
 }
+/* 障害物の来かた（上から降ってくる／道のむこうから来る） */
+function applyViewText() {
+  const fall = settings.view !== "perspective";
+  $("howto-obstacle-icon").src = fall ? "assets/falling/spider.png" : "assets/obstacles/web.png";
+  $("howto-obstacles").innerHTML = fall
+    ? "<b>クモ</b>・<b>どんぐり</b>・<b>雨つぶ</b>・<b>落ち葉</b>に<br>当たると<b>ライフ</b>が減る！"
+    : "<b>クモの巣</b>・<b>カエル</b>・<b>カマキリ</b>に<br>当たると<b>ライフ</b>が減る！";
+}
+setView.addEventListener("change", () => {
+  settings.view = setView.value === "perspective" ? "perspective" : "fall";
+  Game.setMode(settings.view);
+  applyViewText();
+  saveSettings();
+});
 setControl.addEventListener("change", () => {
   settings.control = setControl.value === "body" ? "body" : "arm";
   armX = keyboardX;
@@ -1004,6 +1021,7 @@ async function main() {
   applySettingsToUI();
 
   Game.init($("game-canvas"));
+  Game.setMode(settings.view);
   Game.setDifficulty(settings.difficulty);
   Game.on("hit", (event) => {
     Sound.hit();
@@ -1032,6 +1050,14 @@ async function main() {
 }
 
 main();
+
+/* タッチ端末では、上から降ってくるモードのテントウムシを ◀ ▶ ボタンの上に立たせる（style.css のボタンの大きさと同じ計算） */
+function updateTouchReserve() {
+  const size = Math.min(120, Math.max(72, 0.22 * Math.min(innerWidth, innerHeight)));
+  Game.CONFIG.fallReservePx = IS_TOUCH ? size + 18 : 0;
+}
+updateTouchReserve();
+window.addEventListener("resize", updateTouchReserve);
 
 /* タッチ端末では「キーボードで遊ぶ」を「タッチで遊ぶ」と出す */
 if (IS_TOUCH) $("btn-keyboard").textContent = "タッチ（◀ ▶）で遊ぶ";

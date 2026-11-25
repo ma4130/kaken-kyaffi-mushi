@@ -4,11 +4,11 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
 <title>テントウムシの草むらサバイバル</title>
-<meta name="description" content="カメラの前で体を左右に動かして、テントウムシになって、クモの巣・カエル・カマキリをよけ続けるブラウザゲームです。" />
+<meta name="description" content="カメラの前で腕を上げて、テントウムシになって、上から降ってくるクモ・どんぐり・雨つぶ・落ち葉をよけ続けるブラウザゲームです。" />
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@700;900&family=Outfit:wght@500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=20261118-phone">
+<link rel="stylesheet" href="style.css?v=20261125-fall">
 </head>
 <body>
 
@@ -115,6 +115,13 @@
       </select>
     </label>
     <label>
+      <span>障害物の来かた</span>
+      <select id="set-view">
+        <option value="fall">上から降ってくる(おすすめ)</option>
+        <option value="perspective">道のむこうから来る</option>
+      </select>
+    </label>
+    <label>
       <span>動かし方</span>
       <select id="set-control">
         <option value="arm">上げた腕の方へ動く(おすすめ)</option>
@@ -190,8 +197,8 @@
         <p id="howto-move"><b>右手</b>を上げると右へ<br><b>左手</b>を上げると左へ</p>
       </li>
       <li>
-        <img class="howto-icon howto-obstacles" src="assets/obstacles/web.png" alt="" aria-hidden="true">
-        <p><b>クモの巣</b>・<b>カエル</b>・<b>カマキリ</b>に<br>当たると<b>ライフ</b>が減る！</p>
+        <img class="howto-icon howto-obstacles" id="howto-obstacle-icon" src="assets/falling/spider.png" alt="" aria-hidden="true">
+        <p id="howto-obstacles"><b>クモ</b>・<b>どんぐり</b>・<b>雨つぶ</b>・<b>落ち葉</b>に<br>当たると<b>ライフ</b>が減る！</p>
       </li>
       <li>
         <img class="howto-icon" src="assets/items/aphid.png" alt="" aria-hidden="true">
@@ -281,11 +288,11 @@
   </div>
 </div>
 
-<script src="hit-heart.js?v=20261118-phone"></script>
-<script src="character-hit-region.js?v=20261118-phone"></script>
-<script src="outline-collision.js?v=20261118-phone"></script>
-<script src="game.js?v=20261118-phone"></script>
-<script src="sound.js?v=20261118-phone"></script>
-<script type="module" src="main.js?v=20261118-phone"></script>
+<script src="hit-heart.js?v=20261125-fall"></script>
+<script src="character-hit-region.js?v=20261125-fall"></script>
+<script src="outline-collision.js?v=20261125-fall"></script>
+<script src="game.js?v=20261125-fall"></script>
+<script src="sound.js?v=20261125-fall"></script>
+<script type="module" src="main.js?v=20261125-fall"></script>
 </body>
 </html>

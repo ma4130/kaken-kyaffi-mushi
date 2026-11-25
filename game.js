@@ -18,6 +18,21 @@ window.Game = (function () {
      調整用パラメータ
      ---------------------------------------------------------- */
   var CONFIG = {
+    /* --- 遊び方 ---
+       'fall'        : 上から降ってくるものをよける（幼稚園児向けの既定）
+       'perspective' : 道のむこうから近づいてくるものをよける（元のキャッフィー版と同じ） */
+    mode: 'fall',
+
+    /* --- 上から降ってくるモード --- */
+    fallLanes: 3,             // 列の数（左・まん中・右。奇数にして、まん中に立っていても降ってくるように）
+    fallAreaAspect: 1.3,      // 遊ぶ範囲の幅 ≦ 画面の高さ × この値（横長の画面で列が離れすぎないように）
+    fallCharBottom: 0.93,     // テントウムシの足元の高さ（画面の高さに対する比率）
+    fallCharLaneFill: 0.80,   // テントウムシの幅 ÷ 列の幅
+    fallCharMaxHeight: 0.20,  // テントウムシの高さの上限（画面の高さに対する比率）
+    fallObjLaneFill: 0.66,    // 降ってくるものの幅 ÷ 列の幅（下の scale をさらにかける）
+    fallItemLaneFill: 0.50,   // アイテムの幅 ÷ 列の幅
+    fallReservePx: 0,         // 画面の下にあるタッチ用ボタンの高さ。列がボタンの上まで来るときは、テントウムシをその上に立たせる（main.js が設定）
+
     /* --- 見え方（すべて画面サイズに対する比率なので解像度に依存しない） --- */
     focalRatio: 0.66,         // 焦点距離 = 画面高さ × この値。大きいほど望遠になる
     focalWidthRatio: 0.62,    // ただし 画面の幅 × この値 より大きくしない（縦長の画面向け）
@@ -96,12 +111,22 @@ window.Game = (function () {
     /* 幼稚園児が遊ぶので全体にやさしめ。
          bodyScale : テントウムシの当たり判定の大きさ（1 = 見た目どおり。小さいほど当たりにくい）
          doubles   : 2つ同時に出てくることがあるか */
-    easy:   { label: 'やさしい',   lives: 5, speed: 20, spawnStart: 2.6, spawnMin: 1.7,  ramp: 90, timeLimit: 60, hitScale: 0.80, bodyScale: 0.75, doubles: false },
-    normal: { label: 'ふつう',     lives: 4, speed: 26, spawnStart: 2.0, spawnMin: 1.15, ramp: 75, timeLimit: 60, hitScale: 0.90, bodyScale: 0.85, doubles: false },
-    hard:   { label: 'むずかしい', lives: 3, speed: 34, spawnStart: 1.5, spawnMin: 0.75, ramp: 60, timeLimit: 60, hitScale: 1.00, bodyScale: 0.95, doubles: true },
+    /* fallSpeed: 上から降ってくるモードの落ちる速さ（1秒に画面の高さの何倍） */
+    easy:   { label: 'やさしい',   lives: 5, fallSpeed: 0.24, speed: 20, spawnStart: 2.6, spawnMin: 1.7,  ramp: 90, timeLimit: 60, hitScale: 0.80, bodyScale: 0.75, doubles: false },
+    normal: { label: 'ふつう',     lives: 4, fallSpeed: 0.32, speed: 26, spawnStart: 2.0, spawnMin: 1.15, ramp: 75, timeLimit: 60, hitScale: 0.90, bodyScale: 0.85, doubles: false },
+    hard:   { label: 'むずかしい', lives: 3, fallSpeed: 0.42, speed: 34, spawnStart: 1.5, spawnMin: 0.75, ramp: 60, timeLimit: 60, hitScale: 1.00, bodyScale: 0.95, doubles: true },
   };
 
   var OBSTACLE_KINDS = ['web', 'frog', 'mantis'];
+
+  /* 上から降ってくるモードの障害物。scale は列の幅に対する大きさの倍率 */
+  var FALL_KINDS = ['spider', 'acorn', 'raindrop', 'leaf'];
+  var FALL_IMAGES = {
+    spider:   { src: 'assets/falling/spider.png',   scale: 1.05 },  // 糸でおりてくるクモ
+    acorn:    { src: 'assets/falling/acorn.png',    scale: 0.80 },  // どんぐり
+    raindrop: { src: 'assets/falling/raindrop.png', scale: 0.72 },  // 雨つぶ
+    leaf:     { src: 'assets/falling/leaf.png',     scale: 0.95 },  // 落ち葉（ゆらゆら）
+  };
 
   /* 障害物の画像
        width  : 表示する幅（ワールド単位。高さは画像の縦横比から決まる）
@@ -127,9 +152,20 @@ window.Game = (function () {
     o.img.src = assetUrl(o.src);
   });
 
+  Object.keys(FALL_IMAGES).forEach(function (k) {
+    var o = FALL_IMAGES[k];
+    o.img = new Image();
+    o.ready = false;
+    o.img.onload = function () { o.ready = true; };
+    o.img.src = assetUrl(o.src);
+  });
+
   /* ----------------------------------------------------------
      内部状態
      ---------------------------------------------------------- */
+  var falls = [];       // 上から降ってくる障害物
+  var fallItems = [];   // 上から降ってくるアイテム
+
   var canvas = null, ctx = null;
   var W = 0, H = 0, dpr = 1;
   var cx = 0, horizonY = 0, focal = 0, camH = 0;
@@ -286,6 +322,8 @@ window.Game = (function () {
     charVelX = 0;
     camX = 0;
     obstacles = [];
+    falls = [];
+    fallItems = [];
     items = [];
     particles = [];
     floaters = [];
@@ -351,6 +389,23 @@ window.Game = (function () {
 
     elapsed += dt;
 
+    if (CONFIG.mode === 'fall') updateFall(dt);
+    else updatePerspective(dt, speed);
+
+    scoreAcc += CONFIG.scorePerSecond * dt;
+    score = Math.floor(scoreAcc);
+
+    if (lives <= 0) {
+      playing = false;
+      emit('gameover', { reason: 'life' });
+    } else if (elapsed >= D.timeLimit) {
+      playing = false;
+      emit('gameover', { reason: 'time' });
+    }
+  }
+
+  /* 道のむこうから近づいてくるモードの、出現・当たり判定 */
+  function updatePerspective(dt, speed) {
     // 障害物の出現
     spawnTimer -= dt;
     if (spawnTimer <= 0) {
@@ -426,16 +481,231 @@ window.Game = (function () {
     }
     items = items.filter(function (o) { return o.z > CONFIG.despawnZ && !o.taken; });
 
-    scoreAcc += CONFIG.scorePerSecond * dt;
-    score = Math.floor(scoreAcc);
+  }
 
-    if (lives <= 0) {
-      playing = false;
-      emit('gameover', { reason: 'life' });
-    } else if (elapsed >= D.timeLimit) {
-      playing = false;
-      emit('gameover', { reason: 'time' });
+  /* ==========================================================
+     上から降ってくるモード
+       画面の座標（ピクセル）で動かす。列は fallLanes 本。
+       テントウムシは画面の下を左右に動き、障害物はまっすぐ落ちてくる。
+     ========================================================== */
+  function fallGeom() {
+    var areaW = Math.min(W, H * CONFIG.fallAreaAspect);
+    var laneW = areaW / CONFIG.fallLanes;
+    return { left: (W - areaW) / 2, areaW: areaW, laneW: laneW };
+  }
+  function fallLaneX(g, i) { return g.left + g.laneW * (i + 0.5); }
+
+  /* テントウムシの位置（足元の中心）と高さ */
+  function fallCharPlace() {
+    var g = fallGeom();
+    var aspect = charImgReady && charImg.naturalHeight ? charImg.naturalWidth / charImg.naturalHeight : 1.18;
+    var h = Math.min(g.laneW * CONFIG.fallCharLaneFill / aspect, H * CONFIG.fallCharMaxHeight);
+    var range = g.areaW / 2 - g.laneW / 2;
+    var nx = maxCharX() > 0 ? charX / maxCharX() : 0;
+    var bob = Math.sin(clock * Math.PI * 2 * CONFIG.bobHz) * h * 0.03;
+    var feet = H * CONFIG.fallCharBottom;
+    if (CONFIG.fallReservePx > 0 && g.left < CONFIG.fallReservePx) feet = Math.min(feet, H - CONFIG.fallReservePx - 10);
+    return { x: W / 2 + nx * range, y: feet + bob, h: h };
+  }
+
+  function fallSprite(ob) {
+    var art = FALL_IMAGES[ob.kind];
+    var g = fallGeom();
+    var w = g.laneW * CONFIG.fallObjLaneFill * (art ? art.scale : 1);
+    var ratio = art && art.ready ? art.img.naturalHeight / art.img.naturalWidth : 1;
+    var h = w * ratio;
+    var sway = ob.kind === 'leaf' ? Math.sin(clock * 2.2 + ob.seed) * g.laneW * 0.12 : 0;
+    return { img: art && art.ready ? art.img : null,
+      x: fallLaneX(g, ob.lane) - w / 2 + sway, y: ob.y * H - h / 2, w: w, h: h };
+  }
+
+  function fallItemSprite(it) {
+    var asset = it.kind === 'heart' ? heartImg : shrimpImg;
+    var g = fallGeom();
+    var w = g.laneW * CONFIG.fallItemLaneFill * (it.kind === 'heart' ? 0.8 : 1);
+    var ratio = asset.ready ? asset.img.naturalHeight / asset.img.naturalWidth : 1;
+    var h = w * ratio;
+    return { img: asset.ready ? asset.img : null, x: fallLaneX(g, it.lane) - w / 2, y: it.y * H - h / 2, w: w, h: h };
+  }
+
+  /* 画像が使えないときの判定：同じ列で、高さが重なっていれば当たり */
+  function fallFallbackTouch(sp) {
+    var c = fallCharPlace();
+    var cx = sp.x + sp.w / 2;
+    return Math.abs(cx - c.x) < fallGeom().laneW * 0.5 && sp.y + sp.h > c.y - c.h * 0.8 && sp.y < c.y;
+  }
+
+  function spawnFall() {
+    var lane = Math.floor(Math.random() * CONFIG.fallLanes);
+    var kind = FALL_KINDS[Math.floor(Math.random() * FALL_KINDS.length)];
+    falls.push({ lane: lane, y: -0.15, kind: kind, seed: Math.random() * Math.PI * 2, resolved: false });
+    // むずかしいだけ、たまに別の列にもう1つ（全部の列はふさがない）
+    if (D.doubles && CONFIG.fallLanes > 2 && elapsed > D.ramp * 0.35 && Math.random() < 0.35) {
+      var other = (lane + 1 + Math.floor(Math.random() * (CONFIG.fallLanes - 1))) % CONFIG.fallLanes;
+      falls.push({ lane: other, y: -0.22, kind: FALL_KINDS[Math.floor(Math.random() * FALL_KINDS.length)],
+        seed: Math.random() * Math.PI * 2, resolved: false });
     }
+  }
+
+  function spawnFallItem() {
+    var wantHeart = lives < D.lives && Math.random() < CONFIG.heartChance;
+    fallItems.push({ lane: Math.floor(Math.random() * CONFIG.fallLanes), y: -0.12,
+      kind: wantHeart ? 'heart' : 'shrimp', seed: Math.random() * Math.PI * 2, resolved: false, taken: false });
+  }
+
+  function updateFall(dt) {
+    spawnTimer -= dt;
+    if (spawnTimer <= 0) { spawnFall(); spawnTimer = currentSpawnInterval(); }
+    itemTimer -= dt;
+    if (itemTimer <= 0) {
+      spawnFallItem();
+      itemTimer = CONFIG.itemInterval + (Math.random() - 0.5) * 2 * CONFIG.itemJitter;
+    }
+
+    var c = fallCharPlace();
+    var charSp = characterSprite();
+    for (var i = 0; i < falls.length; i++) {
+      var ob = falls[i];
+      ob.y += D.fallSpeed * dt;
+      if (ob.resolved) continue;
+      var sp = fallSprite(ob);
+      var touches = sp.img ? window.OutlineCollision.overlaps(charSp, sp, dpr) : null;
+      if (touches === null) touches = fallFallbackTouch(sp);
+      if (touches) {
+        ob.resolved = true;
+        if (invincible <= 0) {
+          lives -= 1;
+          invincible = CONFIG.invincibleSeconds;
+          hitFlash = 0;
+          combo = 0;
+          burstAt(c.x, c.y - c.h * 0.5, 22, '#e2c48a');
+          burstAt(c.x, c.y - c.h * 0.5, 10, '#a8de6a');
+          emit('hit', { lives: lives, combo: combo });
+        }
+      } else if (sp.y > c.y) {
+        // テントウムシの足元より下まで落ちたら「よけた」
+        ob.resolved = true;
+        dodged += 1;
+        combo += 1;
+        if (combo > bestCombo) bestCombo = combo;
+        var gain = Math.round(CONFIG.scorePerDodge * multiplier());
+        scoreAcc += gain;
+        popAt(sp.x + sp.w / 2, c.y - c.h * 0.6, '+' + gain, '#fffbe8');
+        burstAt(sp.x + sp.w / 2, c.y - 6, 7, '#d6ffa8');
+        emit('dodge', { dodged: dodged, combo: combo, multiplier: multiplier() });
+      }
+    }
+    falls = falls.filter(function (o) { return o.y < 1.25; });
+
+    for (var j = 0; j < fallItems.length; j++) {
+      var it = fallItems[j];
+      it.y += D.fallSpeed * 0.9 * dt;
+      if (it.resolved) continue;
+      var isp = fallItemSprite(it);
+      var takes = isp.img ? window.OutlineCollision.overlaps(charSp, isp, dpr) : null;
+      if (takes === null) takes = fallFallbackTouch(isp);
+      if (takes) {
+        it.resolved = it.taken = true;
+        var ix = isp.x + isp.w / 2, iy = isp.y + isp.h / 2;
+        if (it.kind === 'heart') {
+          if (lives < D.lives) lives += 1;
+          popAt(ix, iy, 'LIFE+1', '#ffb3c7');
+          burstAt(ix, iy, 16, '#ffb3c7');
+          emit('item', { kind: 'heart', lives: lives });
+        } else {
+          var pts = Math.round(CONFIG.scorePerShrimp * multiplier());
+          scoreAcc += pts;
+          popAt(ix, iy, '+' + pts, '#ffd98a');
+          burstAt(ix, iy, 16, '#ffd98a');
+          emit('item', { kind: 'shrimp', points: pts });
+        }
+      } else if (isp.y > c.y) {
+        it.resolved = true;
+      }
+    }
+    fallItems = fallItems.filter(function (o) { return o.y < 1.25 && !o.taken; });
+  }
+
+  /* 地面：テントウムシが歩く土の帯と、列の目安 */
+  function drawFallGround(showLanes) {
+    var g = fallGeom();
+    var light = sceneLight();
+    var cp = fallCharPlace();
+    var top = cp.y - cp.h * 0.35;
+    ctx.save();
+    var grd = ctx.createLinearGradient(0, top, 0, H);
+    grd.addColorStop(0, 'rgba(214,186,130,0.0)');
+    grd.addColorStop(0.25, 'rgba(206,174,118,0.85)');
+    grd.addColorStop(1, 'rgba(150,112,70,0.95)');
+    ctx.fillStyle = grd;
+    ctx.fillRect(g.left - 20, top, g.areaW + 40, H - top);
+    if (light < 0.99) {
+      ctx.fillStyle = 'rgba(8,14,30,' + ((1 - light) * 0.7).toFixed(3) + ')';
+      ctx.fillRect(g.left - 20, top, g.areaW + 40, H - top);
+    }
+    if (showLanes) {
+      for (var i = 1; i < CONFIG.fallLanes; i++) {
+        var x = g.left + g.laneW * i;
+        var lg = ctx.createLinearGradient(0, 0, 0, H);
+        lg.addColorStop(0, 'rgba(255,255,255,0)');
+        lg.addColorStop(1, 'rgba(255,255,255,' + (0.18 * (0.5 + 0.5 * light)).toFixed(3) + ')');
+        ctx.strokeStyle = lg;
+        ctx.lineWidth = 2;
+        ctx.setLineDash([10, 12]);
+        ctx.beginPath(); ctx.moveTo(x, H * 0.12); ctx.lineTo(x, H); ctx.stroke();
+      }
+      ctx.setLineDash([]);
+    }
+    ctx.restore();
+  }
+
+  /* 落ちてくる場所の目印（地面の影）。近づくほど濃く大きくなる */
+  function drawFallShadows() {
+    var c = fallCharPlace();
+    ctx.save();
+    falls.forEach(function (ob) {
+      if (ob.resolved && ob.y * H > c.y) return;
+      var sp = fallSprite(ob);
+      var t = clamp((sp.y + sp.h) / c.y, 0, 1);
+      ctx.globalAlpha = 0.10 + 0.40 * t * t;
+      ctx.fillStyle = '#2a1a08';
+      ctx.beginPath();
+      ctx.ellipse(sp.x + sp.w / 2, c.y - 2, sp.w * (0.25 + 0.25 * t), Math.max(2, sp.w * 0.08), 0, 0, Math.PI * 2);
+      ctx.fill();
+    });
+    ctx.restore();
+  }
+
+  function drawFallObjects() {
+    var light = sceneLight();
+    ctx.save();
+    fallItems.forEach(function (it) {
+      var sp = fallItemSprite(it);
+      var glow = 0.55 + 0.45 * Math.sin(clock * 5 + it.seed);
+      var tint = it.kind === 'heart' ? '255,140,180' : '255,214,120';
+      var r = Math.max(sp.w, sp.h) * 0.75;
+      var gr = ctx.createRadialGradient(sp.x + sp.w / 2, sp.y + sp.h / 2, 0, sp.x + sp.w / 2, sp.y + sp.h / 2, r);
+      gr.addColorStop(0, 'rgba(' + tint + ',' + (0.5 * glow).toFixed(3) + ')');
+      gr.addColorStop(1, 'rgba(' + tint + ',0)');
+      ctx.fillStyle = gr;
+      ctx.beginPath(); ctx.arc(sp.x + sp.w / 2, sp.y + sp.h / 2, r, 0, Math.PI * 2); ctx.fill();
+      if (sp.img) ctx.drawImage(sp.img, sp.x, sp.y, sp.w, sp.h);
+      else { ctx.fillStyle = 'rgb(' + tint + ')'; ctx.beginPath(); ctx.arc(sp.x + sp.w / 2, sp.y + sp.h / 2, sp.w / 2, 0, Math.PI * 2); ctx.fill(); }
+    });
+    if (light < 0.95) ctx.filter = 'brightness(' + (0.45 + 0.55 * light).toFixed(2) + ')';
+    falls.forEach(function (ob) {
+      var sp = fallSprite(ob);
+      if (ob.kind === 'spider') {
+        // クモの糸（画面の上から）
+        ctx.strokeStyle = 'rgba(240,240,250,0.85)';
+        ctx.lineWidth = Math.max(1.5, sp.w * 0.012);
+        ctx.beginPath(); ctx.moveTo(sp.x + sp.w / 2, 0); ctx.lineTo(sp.x + sp.w / 2, sp.y + 2); ctx.stroke();
+      }
+      if (sp.img) ctx.drawImage(sp.img, sp.x, sp.y, sp.w, sp.h);
+      else { ctx.fillStyle = '#7a5a3a'; ctx.beginPath(); ctx.arc(sp.x + sp.w / 2, sp.y + sp.h / 2, sp.w / 2, 0, Math.PI * 2); ctx.fill(); }
+    });
+    ctx.filter = 'none';
+    ctx.restore();
   }
 
   /* 臨界減衰バネでキャラクターを目標位置へ滑らかに近づける。
@@ -514,11 +784,15 @@ window.Game = (function () {
      ---------------------------------------------------------- */
   function burst(x, z, count, color) {
     var p = project(x, z - 0.5);
+    burstAt(p.x, p.y - p.s * 0.9, count, color, p.s);
+  }
+  function burstAt(px, py, count, color, scaleHint) {
+    var sc = scaleHint || Math.min(W, H) * 0.06;
     for (var i = 0; i < count; i++) {
       var a = Math.random() * Math.PI * 2;
-      var sp = (40 + Math.random() * 150) * Math.min(2, p.s / 40 + 0.6);
+      var sp = (40 + Math.random() * 150) * Math.min(2, sc / 40 + 0.6);
       particles.push({
-        x: p.x, y: p.y - p.s * 0.9,
+        x: px, y: py,
         vx: Math.cos(a) * sp,
         vy: Math.sin(a) * sp - 60,
         life: 0.45 + Math.random() * 0.35,
@@ -532,7 +806,10 @@ window.Game = (function () {
 
   function popText(x, z, text, color) {
     var p = project(x, z - 0.5);
-    floaters.push({ x: p.x, y: p.y - p.s * 1.4, text: text, color: color, life: 0.9, age: 0 });
+    popAt(p.x, p.y - p.s * 1.4, text, color);
+  }
+  function popAt(px, py, text, color) {
+    floaters.push({ x: px, y: py, text: text, color: color, life: 0.9, age: 0 });
     if (floaters.length > 12) floaters.shift();
   }
 
@@ -985,14 +1262,22 @@ window.Game = (function () {
   }
 
   /* 描画と同じ座標・縦横比・揺れを使う。後光や地面の影は判定に含めない。 */
+  /* テントウムシの足元の中心 (x, y) と高さ h（画面のピクセル） */
+  function charPlace() {
+    if (CONFIG.mode === 'fall') return fallCharPlace();
+    var p = project(charX, CONFIG.playerZ);
+    var bob = Math.sin(clock * Math.PI * 2 * CONFIG.bobHz) * CONFIG.bobAmplitude * p.s;
+    return { x: p.x, y: p.y + bob, h: CONFIG.characterWorldHeight * p.s };
+  }
+
   function characterSprite() {
     if (!charImgReady || !charImg.naturalHeight) return null;
-    var p = project(charX, CONFIG.playerZ);
-    var h = CONFIG.characterWorldHeight * p.s;
+    var c = charPlace();
+    var p = { x: c.x };
+    var h = c.h;
     var w = h * charImg.naturalWidth / charImg.naturalHeight;
-    var bob = Math.sin(clock * Math.PI * 2 * CONFIG.bobHz) * CONFIG.bobAmplitude * p.s;
     // 難易度に合わせて判定を中心へ縮める（見た目は変えない）
-    var k = D.bodyScale || 1, cy = p.y + bob - h / 2;
+    var k = D.bodyScale || 1, cy = c.y - h / 2;
     return { img: window.OutlineCollision.markedRegion(charImg),
       x: p.x - w * k / 2, y: cy - h * k / 2, w: w * k, h: h * k };
   }
@@ -1173,10 +1458,9 @@ window.Game = (function () {
     // カメラ映像などの変換が絶対に影響しないよう、描画直前に基準座標系へ戻す
     base();
 
-    var p = project(charX, CONFIG.playerZ);
-    var bob = Math.sin(clock * Math.PI * 2 * CONFIG.bobHz) * CONFIG.bobAmplitude * p.s;
-    var px = p.x;
-    var py = p.y + bob;
+    var c = charPlace();
+    var px = c.x;
+    var py = c.y;
 
     // 被弾直後は点滅（フェードのみ。色も形も変えない）
     var alpha = 1;
@@ -1184,7 +1468,7 @@ window.Game = (function () {
 
     if (charImgReady && charImg.naturalHeight) {
       var iw = charImg.naturalWidth, ih = charImg.naturalHeight;
-      var k = (CONFIG.characterWorldHeight * p.s) / ih; // 縦横比を保った単一スケール値
+      var k = c.h / ih; // 縦横比を保った単一スケール値
       ctx.save();
       ctx.globalAlpha = alpha;
       // translate → 均一 scale(k, k) の順のみを使用
@@ -1193,7 +1477,7 @@ window.Game = (function () {
       ctx.drawImage(charImg, 0, 0, iw, ih);
       ctx.restore();
     } else {
-      drawCharacterFallback(px, py, CONFIG.characterWorldHeight * p.s, alpha);
+      drawCharacterFallback(px, py, c.h, alpha);
     }
   }
 
@@ -1261,6 +1545,14 @@ window.Game = (function () {
       drawIsland(W * 0.60, Math.max(40, W * 0.05), Math.max(6, horizonY * 0.055), '#40708c');
       drawLake();
     }
+    if (CONFIG.mode === 'fall') {
+      drawFallGround(opts.showLanes);
+      if (opts.showObstacles !== false) { drawFallShadows(); drawFallObjects(); }
+      if (opts.showCharacter !== false) drawCharacter();
+      base();
+      drawEffects();
+      return;
+    }
     drawWaves();
     drawChannel();
     if (opts.showLanes) drawLaneGuides();
@@ -1311,6 +1603,9 @@ window.Game = (function () {
     init: init,
     resize: resize,
     setDifficulty: setDifficulty,
+    /* 確認用：降ってくる障害物の列と高さ */
+    getFalls: function () { return falls.filter(function (o) { return !o.resolved; }).map(function (o) { return { lane: o.lane, y: o.y }; }); },
+    setMode: function (m) { CONFIG.mode = m === 'perspective' ? 'perspective' : 'fall'; resetRun(); },
     resetRun: resetRun,
     start: start,
     stop: stop,
