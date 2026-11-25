@@ -1262,3 +1262,15 @@ body[data-screen="title"] .controls { display: none; }
 @media (max-width: 520px) and (orientation: portrait) {
   .howto-list p { font-size: 1.2rem; }
 }
+
+/* 結果画面の「生存時間」を明るく大きく */
+.result-grid .stat {
+  min-width: 180px;
+  padding: 14px 28px;
+  border: 1px solid rgba(255,200,120,.55);
+  background: linear-gradient(180deg, #fff8e2, #ffe8b0);
+  box-shadow: 0 6px 18px rgba(120,80,20,.15);
+}
+.result-grid .stat .section-label { color: #8a5a10; font-size: .9rem; letter-spacing: .12em; }
+.result-grid .result-value { color: #c06a00; font-size: clamp(2.4rem, 6vw, 3.4rem); text-shadow: none; }
+.result-grid .result-unit { color: #c06a00; }

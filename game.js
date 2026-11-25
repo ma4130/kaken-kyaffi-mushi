@@ -24,7 +24,7 @@ window.Game = (function () {
     mode: 'fall',
 
     /* --- 上から降ってくるモード --- */
-    fallLanes: 3,             // 列の数（左・まん中・右。奇数にして、まん中に立っていても降ってくるように）
+    fallLanes: 4,             // 列の数。テントウムシはいずれかの列に吸い付くので、列と列のすきまで止まることはない
     fallAreaAspect: 1.3,      // 遊ぶ範囲の幅 ≦ 画面の高さ × この値（横長の画面で列が離れすぎないように）
     fallCharBottom: 0.93,     // テントウムシの足元の高さ（画面の高さに対する比率）
     fallCharLaneFill: 0.80,   // テントウムシの幅 ÷ 列の幅
@@ -355,7 +355,13 @@ window.Game = (function () {
        nx: -1(左端) 〜 +1(右端)
      ---------------------------------------------------------- */
   function setInput(nx) {
-    charTargetX = clamp(nx, -1, 1) * maxCharX();
+    nx = clamp(nx, -1, 1);
+    // 上から降ってくるモードでは、いちばん近い列に吸い付く（列と列のすきまに立って、ずっとよけ続けることがないように）
+    if (CONFIG.mode === 'fall' && CONFIG.fallLanes > 1) {
+      var n = CONFIG.fallLanes - 1;
+      nx = Math.round((nx + 1) / 2 * n) / n * 2 - 1;
+    }
+    charTargetX = nx * maxCharX();
   }
 
   /* ----------------------------------------------------------
