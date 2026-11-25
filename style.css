@@ -1236,5 +1236,29 @@ body[data-screen="title"] .controls { display: none; }
 
 /* ストップは秒数の横（HUD の中）。HUD はふだん押せないので、このボタンだけ押せるようにする */
 .controls { display: none !important; }
-.hud .hud-stop { pointer-events: auto; align-self: center; white-space: nowrap; }
-@media (max-width: 760px) { .hud .hud-stop { align-self: stretch; } }
+.hud .hud-stop {
+  pointer-events: auto;
+  align-self: start;
+  white-space: nowrap;
+  /* 秒数（TIME）の枠と同じ大きさにそろえる */
+  height: 96px;
+  min-width: clamp(108px, 13vw, 160px);
+  padding: 0 18px;
+  border-radius: var(--radius-md);
+  font-size: clamp(1.1rem, 2vw, 1.5rem);
+}
+@media (max-width: 760px) {
+  .hud .hud-stop { align-self: stretch; flex: 1; height: auto; min-width: 0; font-size: 1.05rem; padding: 6px 12px; }
+  /* ストップのある列を秒数の枠と同じ高さにのばす */
+  .hud > .hud-group:first-child { align-self: stretch; }
+}
+
+/* あそびかたの文字を大きく（説明は2つだけになったので、ゆったり大きく） */
+.howto-card { width: min(440px, 100%); }
+.howto-card h2 { font-size: clamp(1.6rem, 2.3vw, 2.3rem); }
+.howto-list li { grid-template-columns: clamp(56px, 5vw, 80px) 1fr; gap: 14px; padding: 22px 0; }
+.howto-icon { height: 76px; }
+.howto-list p { font-size: clamp(1.35rem, 1.9vw, 1.9rem); line-height: 1.55; }
+@media (max-width: 520px) and (orientation: portrait) {
+  .howto-list p { font-size: 1.2rem; }
+}

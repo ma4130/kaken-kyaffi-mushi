@@ -680,7 +680,7 @@ function applyViewText() {
   const fall = settings.view !== "perspective";
   $("howto-obstacle-icon").src = fall ? "assets/falling/spider.png" : "assets/obstacles/web.png";
   $("howto-obstacles").innerHTML = fall
-    ? "<b>クモ</b>・<b>どんぐり</b>・<b>雨つぶ</b>・<b>落ち葉</b>に<br>当たると<b>ライフ</b>が減る！"
+    ? "<b>クモ</b>・<b>どんぐり</b>・<br><b>雨つぶ</b>・<b>落ち葉</b>に<br>当たると<b>ライフ</b>が減る！"
     : "<b>クモの巣</b>・<b>カエル</b>・<b>カマキリ</b>に<br>当たると<b>ライフ</b>が減る！";
 }
 setView.addEventListener("change", () => {
